@@ -13,7 +13,13 @@ import (
 type Message struct{
 	Id int
 	Time time.Time
-	Msg string
+	Msg byte
+}
+
+type MessagenonTime struct{
+	Id int
+	Time time.Time
+	Msg byte
 }
 
 const MulticastAddr = "224.0.0.1:6666"
@@ -43,11 +49,18 @@ func ClientReader(address string) {
 			log.Fatal(err)
 		}
 
+
 		var msg Message
 		if err := gob.NewDecoder(bytes.NewReader(buf[:n])).Decode(&msg); err != nil {
 			// handle error
 		}
-			fmt.Printf("%s with id %d from %v\n", msg.Msg,msg.Id, addr)
+		if msg.Time.IsZero(){
+			fmt.Printf("%b with id %d from %v\n", msg.Msg,msg.Id, addr)
+
+		} else {
+			fmt.Printf("%b with id %d at %s from %v\n", msg.Msg,msg.Id,msg.Time.String(), addr)
+		}
+
 	}
 
 }
