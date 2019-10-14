@@ -15,9 +15,22 @@ func main(){
 
 	go network.ClientReader(network.SrvAddrM, channel)
 
-	 synchronization()
+	go  synchronization()
 
-	
+	var buf bytes.Buffer
+	for {
+		select {
+		case msg := <-channel:
+			{
+				buf.Reset()
+				//fmt.Print(time.Time{}.String())
+				if err := gob.NewEncoder(&buf).Encode(network.Message{Id: msg.Id, Time: time.Now(), Msg: 0b00}); err != nil {
+					// handle error
+				}
+				network.ClientWriter(network.SrvAddrS,buf)
+			}
+		}
+	}
 }
 
 func synchronization()  {

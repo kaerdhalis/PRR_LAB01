@@ -16,12 +16,14 @@ func main() {
 	go network.ClientReader(network.SrvAddrS,channelP2P)
 
 
-	var tMaitre,ti time.Time
+	var tMaitre,ti,tes time.Time
 	var ecart time.Duration
-	var id int
+	var id ,idDelay int
 
 	var buf bytes.Buffer
 	for;;{
+
+		idDelay = 0
 
 		select {
 		case msg := <-channelMult:
@@ -39,13 +41,23 @@ func main() {
 					fmt.Println("actual ecart ",ecart.String())
 
 					buf.Reset()
-					if err := gob.NewEncoder(&buf).Encode(network.Message{ Id: id, Time: time.Now(), Msg: 0b00}); err != nil {
+					if err := gob.NewEncoder(&buf).Encode(network.Message{ Id: idDelay, Time: time.Now(), Msg: 0b00}); err != nil {
 						// handle error
 					}
 					network.ClientWriter(network.SrvAddrM,buf)
+					idDelay++
 				}
 			}
 
+		case msgd := <-channelP2P:
+
+			if idDelay == msgd.Id {
+
+				var delay = msgd.Time.Sub(tes)/2
+
+				fmt.Println(delay)
+
+			}
 		}
 	
 
