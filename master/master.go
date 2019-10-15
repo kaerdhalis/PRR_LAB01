@@ -1,9 +1,10 @@
 package main
 
 import (
-	"Laboratoire01/network"
+	"../network"
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"time"
 )
 
@@ -22,8 +23,10 @@ func main(){
 		select {
 		case msg := <-channel:
 			{
+
 				buf.Reset()
-				//fmt.Print(time.Time{}.String())
+				fmt.Println("Received DELAY_REQUEST from ?")
+				
 				if err := gob.NewEncoder(&buf).Encode(network.Message{Id: msg.Id, Time: time.Now(), Msg: 0b00}); err != nil {
 					// handle error
 				}
@@ -35,9 +38,9 @@ func main(){
 
 func synchronization()  {
 
-	var buf bytes.Buffer
+		var buf bytes.Buffer
 
-	for id:= 0;;{
+		for id:= 0;;{
 
 		id +=1
 		buf.Reset()
