@@ -17,7 +17,7 @@ type Message struct{
 
 const MulticastAddr = "224.0.1.1:6666"
 const SrvAddrS = "127.0.0.1:6060"
-const SrvAddrM  = "127.0.0.2:5050"
+const SrvAddrM  = "127.0.0.2:5010"
 
 func ClientWriter(address string,buf bytes.Buffer) {
 
@@ -44,6 +44,7 @@ func ClientReaderMult(address string, channel chan Message) {
 func ClientReader(address string, channel chan Message) {
 	// error testing suppressed to compact listing on slides
 	conn, err := net.ListenPacket("udp", address)
+
 	if err != nil {
 		log.Fatal(err)
 	}
