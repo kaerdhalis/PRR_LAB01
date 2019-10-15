@@ -23,8 +23,10 @@ func main(){
 		select {
 		case msg := <-channel:
 			{
+
 				buf.Reset()
-				fmt.Println(time.Time{}.String())
+				fmt.Println("Received DELAY_REQUEST from ?")
+				
 				if err := gob.NewEncoder(&buf).Encode(network.Message{Id: msg.Id, Time: time.Now(), Msg: 0b00}); err != nil {
 					// handle error
 				}

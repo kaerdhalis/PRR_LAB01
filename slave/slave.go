@@ -20,27 +20,27 @@ func main() {
 
 	go delayRequest()
 
-	var tMaitre,ti time.Time
+	var masterTime,localTimeWhenSyncReceived time.Time
 	var ecart time.Duration
 	var id  int
 
 	var buf bytes.Buffer
 	for;;{
 
-		idDelay = 0
+
 
 		select {
 		case msg := <-channelMult:
 			if msg.Msg == 0b00{
 
-				ti = time.Now()
+				localTimeWhenSyncReceived = time.Now()
 				id = msg.Id
 			}else if msg.Msg == 0b01{
 
 				if id == msg.Id {
-					tMaitre = msg.Time
+					masterTime = msg.Time
 
-					ecart = tMaitre.Sub(ti)
+					ecart = masterTime.Sub(localTimeWhenSyncReceived)
 
 					fmt.Println("actual ecart ",ecart.String())
 
@@ -49,16 +49,16 @@ func main() {
 						// handle error
 					}
 					//network.ClientWriter(network.SrvAddrM,buf)
-					idDelay++
+
 				}
 			}
 
-		case msgd := <-channelP2P:
+		case delayMsg := <-channelP2P:
 
-			if idDelay == msgd.Id {
+			if idDelay == delayMsg.Id {
 
 
-				var delay = msgd.Time.Sub(localTimeWhenLastDelayRequestSent)
+				var delay = delayMsg.Time.Sub(localTimeWhenLastDelayRequestSent)
 
 				fmt.Println("transmission delay n°",idDelay," =", delay)
 
@@ -82,9 +82,6 @@ func delayRequest()  {
 		time.Sleep(time.Duration(timeTilNextDelayRequest) * time.Second)
 		idDelay++
 		buf.Reset()
-
-
-
 		fmt.Println ("Sending delay request n°", idDelay)
 
 

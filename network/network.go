@@ -45,6 +45,7 @@ func ClientReader(address string, channel chan Message) {
 	// error testing suppressed to compact listing on slides
 	conn, err := net.ListenPacket("udp", address)
 
+
 	if err != nil {
 		log.Fatal(err)
 	}
