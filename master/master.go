@@ -14,7 +14,10 @@ var portP2P int
 var portMulticast int
 var multicastAddr string
 var artificialNetworkDelay time.Duration
-func main(){
+
+var verbose bool = false
+
+func main() {
 	argsWithoutProg := os.Args[1:]
 	setup(argsWithoutProg)
 
@@ -22,23 +25,24 @@ func main(){
 
 	go network.ClientReaderOnPort(portP2P, channel)
 
-	go  synchronization()
+	go synchronization()
 
 	var buf bytes.Buffer
 	for {
 		select {
 		case msgWithOrigin := <-channel:
 			{
-				msg:=msgWithOrigin.Msg
+				msg := msgWithOrigin.Msg
 				buf.Reset()
-
-				fmt.Println("Received DELAY_REQUEST from",msgWithOrigin.Ip)
+				if (verbose) {
+					fmt.Println("Received DELAY_REQUEST from", msgWithOrigin.Ip)
+				}
 				err := gob.NewEncoder(&buf).Encode(network.Message{Id: msg.Id, Time: time.Now(), Msg: 0b00})
 				if err != nil {
 					// handle error
 				}
 				time.Sleep(artificialNetworkDelay) //simulates network delay of artificialNetworkDelay milliseconds
-				network.ClientWriter(msgWithOrigin.Ip,portP2P,buf)
+				network.ClientWriter(msgWithOrigin.Ip, portP2P, buf)
 			}
 		}
 	}
@@ -46,7 +50,7 @@ func main(){
 
 func setup(args [] string) {
 
-	if !(len(args)== 2 || len(args)==3){
+	if !(len(args) == 2 || len(args) == 4) {
 		wrongArguments()
 	}
 
@@ -55,31 +59,34 @@ func setup(args [] string) {
 	if len(args) >= 2 {
 
 		p, err := strconv.Atoi(args[0])
-		if err!= nil {
+		if err != nil {
 			wrongArguments()
 		}
 		portP2P = p
 		fmt.Println("P2P Port=", portP2P)
 
 		p, err = strconv.Atoi(args[1])
-		if err!= nil {
+		if err != nil {
 			wrongArguments()
 		}
-		portMulticast=p
+		portMulticast = p
 
 		fmt.Println("Multicast port=", portMulticast)
-		multicastAddr=network.MulticastAddr+":"+strconv.Itoa(portMulticast)
+		multicastAddr = network.MulticastAddr + ":" + strconv.Itoa(portMulticast)
 		fmt.Println("Multicast addr=", multicastAddr)
-		if len(args) == 3{
+		if len(args) == 4 {
 			drift, err := strconv.Atoi(args[2])
-			if err!= nil{
+			if err != nil {
 				wrongArguments()
 			}
 
-			artificialNetworkDelay= time.Duration(drift) *time.Millisecond
-
-		}else{
-			artificialNetworkDelay=0
+			artificialNetworkDelay = time.Duration(drift) * time.Millisecond
+			verbose, err = strconv.ParseBool(args[3])
+			if err != nil {
+				wrongArguments()
+			}
+		} else {
+			artificialNetworkDelay = 0
 		}
 		fmt.Println("Artificial network delay=", artificialNetworkDelay)
 
@@ -88,33 +95,37 @@ func setup(args [] string) {
 	fmt.Println("=========================")
 }
 
-func wrongArguments(){
+func wrongArguments() {
 	fmt.Printf("WRONG FORMAT Correct usage: go run master.go <P2P port> <multicast port>  OR " +
 		"go run master.go <P2P port> <multicast port> <artificial network delay> <artificial clock offset> ")
 	os.Exit(1)
 }
-func synchronization()  {
+func synchronization() {
 
-		var buf bytes.Buffer
+	var buf bytes.Buffer
 
-		for id:= 1;;{
+	for id := 1; ; {
 
-		id +=1
+		id += 1
 		buf.Reset()
-		if err := gob.NewEncoder(&buf).Encode(network.Message{ Id: id, Time: time.Time{}, Msg: 0b00}); err != nil {
+		if err := gob.NewEncoder(&buf).Encode(network.Message{Id: id, Time: time.Time{}, Msg: 0b00}); err != nil {
 			// handle error
 		}
+		if (verbose) {
+			fmt.Println("Multicasting SYNC")
+		}
 		time.Sleep(artificialNetworkDelay) //simulates network delay of artificialNetworkDelay milliseconds
-		network.ClientWriter(multicastAddr,portP2P,buf)
+		network.ClientWriter(multicastAddr, portP2P, buf)
 		masterTime := time.Now()
 		buf.Reset()
-		if err := gob.NewEncoder(&buf).Encode(network.Message{ Id: id, Time: masterTime, Msg: 0b01}); err != nil {
+		if err := gob.NewEncoder(&buf).Encode(network.Message{Id: id, Time: masterTime, Msg: 0b01}); err != nil {
 			// handle error
 		}
+		if (verbose) {
+			fmt.Println("Multicasting FOLLOW UP")
+		}
 		time.Sleep(artificialNetworkDelay) //simulates network delay of artificialNetworkDelay milliseconds
-		network.ClientWriter(multicastAddr,portP2P,buf)
+		network.ClientWriter(multicastAddr, portP2P, buf)
 		time.Sleep(2 * time.Second)
 	}
 }
-
-
