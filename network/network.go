@@ -3,9 +3,12 @@ package network
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"golang.org/x/net/ipv4"
 	"log"
 	"net"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -13,11 +16,18 @@ type Message struct{
 	Id int
 	Time time.Time
 	Msg byte
+	OriginPort int
 }
 
+type MessageWithOrigin struct{
+	Msg Message
+	Ip string
+}
+
+
 const MulticastAddr = "224.0.1.1:6666"
-const SrvAddrS = "127.0.0.1:6060"
-const SrvAddrM  = "127.0.0.2:5010"
+const SrvAddrSlave = "127.0.0.1:6060"
+const SrvAddrMaster  = "127.0.0.1:5010"
 
 func ClientWriter(address string,buf bytes.Buffer) {
 
@@ -29,8 +39,8 @@ func ClientWriter(address string,buf bytes.Buffer) {
 	_, err  = buf.WriteTo(conn)
 }
 
-func ClientReaderMult(address string, channel chan Message) {
-
+func ClientReaderMult(address string, channel chan MessageWithOrigin) {
+	fmt.Println()
 	// error testing suppressed to compact listing on slides
 	conn, _ := net.ListenPacket("udp", address) // listen on port
 	defer conn.Close()
@@ -41,9 +51,17 @@ func ClientReaderMult(address string, channel chan Message) {
 
 }
 
-func ClientReader(address string, channel chan Message) {
+func ClientReaderPort(port int,channel chan MessageWithOrigin)  {
+	var localAddr string
+	localAddr ="127.0.0.1:"+ strconv.Itoa(port)
+	ClientReader(localAddr,channel)
+
+}
+func ClientReader(address string, channel chan MessageWithOrigin) {
 	// error testing suppressed to compact listing on slides
+
 	conn, err := net.ListenPacket("udp", address)
+
 
 
 	if err != nil {
@@ -55,11 +73,18 @@ func ClientReader(address string, channel chan Message) {
 
 }
 
-func decrypt(conn net.PacketConn ,channel chan Message){
+func decrypt(conn net.PacketConn ,channel chan MessageWithOrigin){
+
 
 	buf := make([]byte, 1024)
 	for {
-		n, _, err := conn.ReadFrom(buf) // n, _, addr, err := p.ReadFrom(buf)
+		var result MessageWithOrigin
+		var ip net.Addr
+		n, ip, err := conn.ReadFrom(buf) // n,addr, err := p.ReadFrom(buf)
+
+		cleanedIp:=strings.Split(ip.String(),":")[0]
+		result.Ip=cleanedIp
+
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -68,7 +93,13 @@ func decrypt(conn net.PacketConn ,channel chan Message){
 		if err := gob.NewDecoder(bytes.NewReader(buf[:n])).Decode(&msg); err != nil {
 			// handle error
 		}
-		channel <- msg
+
+
+
+		result.Msg= msg
+
+
+		channel <- result
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -12,25 +13,27 @@ import (
 
 func main(){
 
-	channel := make(chan network.Message)
+	channel := make(chan network.MessageWithOrigin)
 
-	go network.ClientReader(network.SrvAddrM, channel)
+	go network.ClientReader(network.SrvAddrMaster, channel)
 
 	go  synchronization()
 
 	var buf bytes.Buffer
 	for {
 		select {
-		case msg := <-channel:
+		case msgWithOrigin := <-channel:
 			{
-
+				msg:=msgWithOrigin.Msg
 				buf.Reset()
-				fmt.Println("Received DELAY_REQUEST from ?")
+				slaveAddr:= msgWithOrigin.Ip+":"+strconv.Itoa(msg.OriginPort)
+				fmt.Println("Received DELAY_REQUEST from ",slaveAddr)
 				
 				if err := gob.NewEncoder(&buf).Encode(network.Message{Id: msg.Id, Time: time.Now(), Msg: 0b00}); err != nil {
 					// handle error
 				}
-				network.ClientWriter(network.SrvAddrS,buf)
+
+				network.ClientWriter(slaveAddr,buf)
 			}
 		}
 	}
@@ -40,7 +43,7 @@ func synchronization()  {
 
 		var buf bytes.Buffer
 
-		for id:= 0;;{
+		for id:= 1;;{
 
 		id +=1
 		buf.Reset()
@@ -49,10 +52,10 @@ func synchronization()  {
 			// handle error
 		}
 
-		tMaitre := time.Now()
+		masterTime := time.Now()
 		network.ClientWriter(network.MulticastAddr,buf)
 		buf.Reset()
-		if err := gob.NewEncoder(&buf).Encode(network.Message{ Id: id, Time: tMaitre, Msg: 0b01}); err != nil {
+		if err := gob.NewEncoder(&buf).Encode(network.Message{ Id: id, Time: masterTime, Msg: 0b01}); err != nil {
 			// handle error
 		}
 		network.ClientWriter(network.MulticastAddr,buf)
