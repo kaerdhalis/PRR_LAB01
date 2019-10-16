@@ -3,7 +3,6 @@ package network
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
 	"golang.org/x/net/ipv4"
 	"log"
 	"net"
@@ -16,7 +15,6 @@ type Message struct{
 	Id int
 	Time time.Time
 	Msg byte
-	OriginPort int
 }
 
 type MessageWithOrigin struct{
@@ -25,22 +23,26 @@ type MessageWithOrigin struct{
 }
 
 
-const MulticastAddr = "224.0.1.1:6666"
-const SrvAddrSlave = "127.0.0.1:6060"
-const SrvAddrMaster  = "127.0.0.1:5010"
+const MulticastAddr = "224.0.1.1"
 
-func ClientWriter(address string,buf bytes.Buffer) {
+func ClientWriter(address string,fromPort int,buf bytes.Buffer) {
+	var localAddr= new (net.UDPAddr)
+	localAddr.Port= fromPort
 
-	conn, err := net.Dial("udp", address)
+	var ipPort=strings.Split(address,":")
+	var remoteAddr = new (net.UDPAddr)
+	remoteAddr.IP= net.ParseIP(ipPort[0])
+	remoteAddr.Port,_= strconv.Atoi(ipPort[1])
+
+	conn, err := net.DialUDP("udp",localAddr, remoteAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer conn.Close()
 	_, err  = buf.WriteTo(conn)
 }
-
 func ClientReaderMult(address string, channel chan MessageWithOrigin) {
-	fmt.Println()
+
 	// error testing suppressed to compact listing on slides
 	conn, _ := net.ListenPacket("udp", address) // listen on port
 	defer conn.Close()
@@ -51,18 +53,15 @@ func ClientReaderMult(address string, channel chan MessageWithOrigin) {
 
 }
 
-func ClientReaderPort(port int,channel chan MessageWithOrigin)  {
+func ClientReaderOnPort(port int,channel chan MessageWithOrigin)  {
 	var localAddr string
 	localAddr ="127.0.0.1:"+ strconv.Itoa(port)
-	ClientReader(localAddr,channel)
-
+	clientReader(localAddr,channel)
 }
-func ClientReader(address string, channel chan MessageWithOrigin) {
+func clientReader(address string, channel chan MessageWithOrigin) {
 	// error testing suppressed to compact listing on slides
 
 	conn, err := net.ListenPacket("udp", address)
-
-
 
 	if err != nil {
 		log.Fatal(err)
@@ -82,8 +81,7 @@ func decrypt(conn net.PacketConn ,channel chan MessageWithOrigin){
 		var ip net.Addr
 		n, ip, err := conn.ReadFrom(buf) // n,addr, err := p.ReadFrom(buf)
 
-		cleanedIp:=strings.Split(ip.String(),":")[0]
-		result.Ip=cleanedIp
+		result.Ip=ip.String()
 
 		if err != nil {
 			log.Fatal(err)

@@ -14,13 +14,15 @@ import (
 var idDelay int
 var localTimeWhenLastDelayRequestSent time.Time
 var currentNetworkDelay time.Duration
+
+var artificialNetworkDelay time.Duration
 var artificialClockOffset time.Duration
 
 var port int
 var masterP2PAddr string
 var masterMultiCastAddr string
 
-
+var timeDelta time.Duration =0
 func main() {
 	argsWithoutProg := os.Args[1:]
 	setup(argsWithoutProg)
@@ -29,15 +31,16 @@ func main() {
 
 	channelP2P := make(chan network.MessageWithOrigin)
 	go network.ClientReaderMult(masterMultiCastAddr, channelMult)
-	go network.ClientReaderPort(port, channelP2P)
+
+	go network.ClientReaderOnPort(port, channelP2P)
 
 	go delayRequest()
 
 	var masterTime, localTimeWhenSyncReceived time.Time
-	var timeDelta time.Duration
+
 	var id int
 
-	var buf bytes.Buffer
+
 	for {
 
 		select {
@@ -53,8 +56,8 @@ func main() {
 					masterTime = msg.Time
 
 					timeDelta = masterTime.Sub(localTimeWhenSyncReceived)
-
-					fmt.Println("actual time difference ", timeDelta.String())
+					timeDelta= timeDelta+currentNetworkDelay
+					fmt.Println("current time difference ", timeDelta.String())
 				}
 			}
 
@@ -69,12 +72,22 @@ func main() {
 			}
 		}
 
+
+		//fmt.Println("corrected slave time=",MasterTime())
 	}
 }
 
-func setup(args [] string) {
+func systemTime()time.Time{
+	return time.Now().Add(artificialClockOffset);
+}
+func MasterTime()time.Time{
+	return time.Now().Add(timeDelta)
 
-	if !(len(args)== 3 || len(args)==4){
+}
+
+func setup(args [] string) {
+	fmt.Println(args[0])
+	if !(len(args)== 3 || len(args)==5){
 		wrongArguments()
 	}
 
@@ -93,21 +106,27 @@ func setup(args [] string) {
 		fmt.Println("Master P2P ip=", masterP2PAddr)
 		fmt.Println("Master MultiCast ip =", masterMultiCastAddr)
 
-		if len(args) == 4 {
-			drift, err := strconv.Atoi(args[3])
+		if len(args) == 5 {
+			x, err := strconv.Atoi(args[3])
 			if err!= nil{
 				wrongArguments()
 			}
+			artificialClockOffset= time.Duration(x) *time.Millisecond
 
-			artificialClockOffset= time.Duration(drift) *time.Millisecond
-
+			x, err = strconv.Atoi(args[4])
+			if err!= nil{
+				wrongArguments()
+			}
+			artificialNetworkDelay= time.Duration(x) *time.Millisecond
 		}else{
 			artificialClockOffset=0
+			artificialNetworkDelay=0
 		}
-		fmt.Println("artificial clock Drift=", artificialClockOffset)
+		fmt.Println("Artificial clock Drift=", artificialClockOffset)
+		fmt.Println("Artificial network delay=", artificialNetworkDelay)
 	}
 
-	fmt.Printf("=========================")
+	fmt.Println("=========================")
 }
 /**
 Prints the wrong format error and exits application
@@ -126,19 +145,21 @@ func delayRequest() {
 	var buf bytes.Buffer
 	var timeTilNextDelayRequest = rand.Intn(10) + 5
 	for {
+		time.Sleep(time.Duration(timeTilNextDelayRequest) * time.Second)
+
 
 		localTimeWhenLastDelayRequestSent = time.Now()
 
-		time.Sleep(time.Duration(timeTilNextDelayRequest) * time.Second)
+
 		idDelay++
 		buf.Reset()
-		fmt.Println("Sending delay request n°", idDelay)
-		err := gob.NewEncoder(&buf).Encode(network.Message{Id: idDelay, Time: time.Time{}, Msg: 0b10, OriginPort: port})
+		fmt.Println("Sending DELAY_REQUEST n°", idDelay)
+		err := gob.NewEncoder(&buf).Encode(network.Message{Id: idDelay, Time: time.Time{}, Msg: 0b10})
 		if  err != nil {
 			// handle error
 		}
-
-		network.ClientWriter(masterP2PAddr, buf)
+		time.Sleep(artificialNetworkDelay)
+		network.ClientWriter(masterP2PAddr,port, buf)
 
 		timeTilNextDelayRequest = rand.Intn(15)
 
