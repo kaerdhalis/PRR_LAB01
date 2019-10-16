@@ -28,8 +28,8 @@ func main(){
 				buf.Reset()
 				slaveAddr:= msgWithOrigin.Ip+":"+strconv.Itoa(msg.OriginPort)
 				fmt.Println("Received DELAY_REQUEST from ",slaveAddr)
-				
-				if err := gob.NewEncoder(&buf).Encode(network.Message{Id: msg.Id, Time: time.Now(), Msg: 0b00}); err != nil {
+				err := gob.NewEncoder(&buf).Encode(network.Message{Id: msg.Id, Time: time.Now(), Msg: 0b00});
+				if err != nil {
 					// handle error
 				}
 
