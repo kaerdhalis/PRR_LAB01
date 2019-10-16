@@ -87,7 +87,9 @@ func MasterTime() time.Time {
 	return systemTime().Add(timeDelta)
 
 }
-
+/**
+parses the arguments needed for the program
+*/
 func setup(args [] string) {
 	fmt.Println(args[0])
 	if !(len(args) == 3 || len(args) == 6 ) {
@@ -130,7 +132,7 @@ func setup(args [] string) {
 			artificialClockOffset = 0
 			artificialNetworkDelay = 0
 		}
-		fmt.Println("Artificial clock Drift=", artificialClockOffset)
+		fmt.Println("Artificial clock Offset=", artificialClockOffset)
 		fmt.Println("Artificial network delay=", artificialNetworkDelay)
 
 	}
@@ -143,13 +145,14 @@ Prints the wrong format error and exits application
 */
 func wrongArguments() {
 	fmt.Printf("WRONG FORMAT Correct usage: go run slave.go <port> <masterP2PIp> <masterMultCastIp> OR " +
-	"go run slave.go <port> <masterP2PIp> <masterMultCastIp> <artificial clock offset>" +
+	"go run slave.go <port> <masterP2PIp> <masterMultCastIp> <artificial clock offset> <verbose>" +
 		" <artificial network delay> <verbose> ")
 	os.Exit(1)
 }
 
 /**
 Sends a Delay request to the server at a random interval between 5 and 15 seconds
+and stores the time at which it has been sent
 */
 func delayRequest() {
 
@@ -162,7 +165,7 @@ func delayRequest() {
 
 		idDelay++
 		buf.Reset()
-		if (verbose) {
+		if verbose {
 			fmt.Println("Sending DELAY_REQUEST n°", idDelay)
 		}
 		err := gob.NewEncoder(&buf).Encode(network.Message{Id: idDelay, Time: time.Time{}, Msg: 0b10})

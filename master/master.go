@@ -34,7 +34,7 @@ func main() {
 			{
 				msg := msgWithOrigin.Msg
 				buf.Reset()
-				if (verbose) {
+				if verbose {
 					fmt.Println("Received DELAY_REQUEST from", msgWithOrigin.Ip)
 				}
 				err := gob.NewEncoder(&buf).Encode(network.Message{Id: msg.Id, Time: time.Now(), Msg: 0b00})
@@ -48,6 +48,9 @@ func main() {
 	}
 }
 
+/**
+parses the arguments needed for the program
+*/
 func setup(args [] string) {
 
 	if !(len(args) == 2 || len(args) == 4) {
@@ -95,11 +98,18 @@ func setup(args [] string) {
 	fmt.Println("=========================")
 }
 
+/**
+Prints the wrong format error and exits application
+*/
 func wrongArguments() {
 	fmt.Printf("WRONG FORMAT Correct usage: go run master.go <P2P port> <multicast port>  OR " +
-		"go run master.go <P2P port> <multicast port> <artificial network delay> <artificial clock offset> ")
+		"go run master.go <P2P port> <multicast port> <artificial network delay> <verbose> ")
 	os.Exit(1)
 }
+
+/**
+multicasts the SYNC and FOLLOW UP message every 2 seconds
+*/
 func synchronization() {
 
 	var buf bytes.Buffer
@@ -111,18 +121,20 @@ func synchronization() {
 		if err := gob.NewEncoder(&buf).Encode(network.Message{Id: id, Time: time.Time{}, Msg: 0b00}); err != nil {
 			// handle error
 		}
-		if (verbose) {
-			fmt.Println("Multicasting SYNC")
+
+		if verbose {
+			fmt.Println("MultiCasting SYNC")
 		}
 		time.Sleep(artificialNetworkDelay) //simulates network delay of artificialNetworkDelay milliseconds
 		network.ClientWriter(multicastAddr, portP2P, buf)
 		masterTime := time.Now()
 		buf.Reset()
 		if err := gob.NewEncoder(&buf).Encode(network.Message{Id: id, Time: masterTime, Msg: 0b01}); err != nil {
-			// handle error
+			//handle error
 		}
-		if (verbose) {
-			fmt.Println("Multicasting FOLLOW UP")
+
+		if verbose {
+			fmt.Println("MultiCasting FOLLOW UP")
 		}
 		time.Sleep(artificialNetworkDelay) //simulates network delay of artificialNetworkDelay milliseconds
 		network.ClientWriter(multicastAddr, portP2P, buf)
